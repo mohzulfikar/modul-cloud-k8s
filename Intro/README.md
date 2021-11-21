@@ -42,3 +42,92 @@ Node-node *worker* nantinya akan menjadi tempat untuk pod-pod yang merupakan kom
 Komponen *control plane* berguna untuk membuat keputusan dalam klaster tersebut (contohnya, mekanisme penjadwalan pod atau objek lain), serta berperan dalam deteksi dan merespon terhadap *events* dalam klaster (contohnya, penjadwalan pod baru apabila jumlah replika yang ada pada replication controller tidak terpenuhi).
 
 Control plane dapat dijalankan di mesin atau node manapun yang ada di klaster. Namun biasanya, untuk memudahkan proses awal, skrip awal biasanya memulai semua komponen *control plane* pada mesin yang sama dan tidak menjalankan kontainer *user* pada mesin ini. Untuk pembuatan cluster HA, disarankan untuk menjalankan *control plane* pada banyak mesin (minimal 3).
+
+### kube-apiserver
+
+Komponen control plane yang mengekspos API Kubernetes. Merupakan front-end dari control plane Kubernetes.
+
+### etcd
+
+Penyimpanan atau *database key value* konsisten yang digunakan sebagai penyimpanan data klaster Kubernetes. Selalu perhatikan mekanisme untuk mencadangkan data etcd pada klaster Kubernetes, etcd adalah komponen yang wajib untuk dicadangkan.
+
+### kube-scheduler
+
+Komponen *control plane* yang bertugas mengamati Pod baru yang belum ditempatkan di node manapun dan kemudian memilihkan Node di mana Pod baru tersebut akan dijalankan (penjadwalan).
+
+Faktor-faktor yang dipertimbangkan untuk keputusan penjadwalan termasuk: kebutuhan sumber daya secara individual dan kolektif, batasan perangkat keras/perangkat lunak/peraturan, spesifikasi afinitas dan nonafinitas, lokalisasi data, interferensi antar beban kerja dan tenggat waktu.
+
+### kube-controller-manager
+
+Komponen control plane yang menjalankan pengontrol.
+
+Secara logis, setiap pengontrol adalah sebuah proses yang berbeda, tetapi untuk mengurangi kompleksitas, kesemuanya dikompilasi menjadi sebuah *binary* yang dijalankan sebagai satu proses.
+
+Kontroler-kontroler ini meliputi:
+
+- Kontroler *Node* : Bertanggung jawab untuk mengamati dan memberikan respons apabila jumlah *node* berkurang.
+- Kontroler Replikasi : Bertanggung jawab untuk menjaga jumlah *pod* agar jumlahnya sesuai dengan kebutuhan setiap objek kontroler replikasi yang ada di sistem.
+- Kontroler *Endpoints* : Menginisiasi objek *Endpoints* (yang merupakan gabungan *Pods* dan *Services*).
+- Kontroler *Service Account & Token*: Membuat akun dan akses token API standar untuk setiap *namespaces* yang dibuat.
+
+### cloud-controller-manager
+
+[Cloud-controller-manager](https://kubernetes.io/docs/concepts/architecture/cloud-controller/) merupakan kontroler yang berinteraksi dengan penyedia layanan *cloud*. Kontroler ini merupakat fitur alfa yang diperkenalkan pada Kubernetes versi 1.6. Untuk info lebih lanjut, bisa dibaca pada tautan [berikut](https://kubernetes.io/docs/concepts/architecture/cloud-controller/).
+
+## Komponen Node
+
+Komponen ini ada pada setiap *node*, fungsinya adalah melakukan pemeliharaan terhadap *pod* serta menyediakan *environment runtime* bagi Kubernetes.
+
+### kubelet
+
+Agen yang dijalankan pada setiap node di klaster yang bertugas untuk memastikan kontainer dijalankan di dalam Pod.
+
+### kube-proxy
+
+[kube-proxy](https://kubernetes.io/docs/admin/kube-proxy/) membantu abstraksi service Kubernetes melakukan tugasnya. Hal ini terjadi dengan cara memelihara aturan-aturan jaringan (network rules) serta meneruskan koneksi yang ditujukan pada suatu host.
+
+### Container Runtime
+
+*Container runtime* adalah perangkat lunak yang bertanggung jawab dalam menjalankan kontainer. Kubernetes mendukung beberapa *runtime*, diantaranya adalah: [Docker](http://www.docker.com), [containerd](https://containerd.io), [cri-o](https://cri-o.io/), [rktlet](https://github.com/kubernetes-incubator/rktlet) dan semua implementasi [Kubernetes CRI (Container Runtime Interface)](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-node/container-runtime-interface.md).
+
+## Cluster Networking
+
+Jaringan adalah bagian utama dari Kubernetes, tetapi bisa menjadi sulit untuk memahami persis bagaimana mengharapkannya bisa bekerja. Ada 4 masalah yang berbeda untuk diatasi:
+
+1. Komunikasi antar kontainer yang sangat erat: hal ini diselesaikan oleh Pod dan komunikasi `localhost`.
+2. Komunikasi antar Pod: ini adalah fokus utama dari dokumen ini.
+3. Komunikasi Pod dengan Service: ini terdapat di Service.
+4. Komunikasi eksternal dengan Service: ini terdapat di Service.
+
+Kubernetes adalah tentang berbagi mesin antar aplikasi. Pada dasarnya, saat berbagi mesin harus memastikan bahwa dua aplikasi tidak mencoba menggunakan port yang sama. Mengkoordinasikan port di banyak pengembang sangat sulit dilakukan pada skala yang berbeda dan memaparkan pengguna ke masalah tingkat kluster yang di luar kendali mereka.
+
+Alokasi port yang dinamis membawa banyak komplikasi ke sistem - setiap aplikasi harus menganggap port sebagai flag, server API harus tahu cara memasukkan nomor port dinamis ke dalam blok konfigurasi, Service-Service harus tahu cara menemukan satu sama lain, dll. Sebaliknya daripada berurusan dengan ini, Kubernetes mengambil pendekatan yang berbeda.
+
+Kubernetes memiliki ekspektasi bahwa konfigurasi jaringan untuk komunikasi antar pod telah tersedia dan tidak akan membuatnya sendiri. Untuk menyediakan jaringan container, Kubernetes melakukan standarisasi pada spesifikasi Container Network Interface (CNI). Sejak v1.6.0, tujuan adanya tools kubeadm (alat bootstrap cluster Kubernetes) adalah menggunakan CNI. Informasi lebih lanjut mengenai Jaringan pada Kubernetes dapat anda lihat pada tautan [berikut](https://speakerdeck.com/thockin/illustrated-guide-to-kubernetes-networking) atau [dokumentasi](https://kubernetes.io/docs/concepts/cluster-administration/networking/) official dari kubernetes.
+
+## Addons
+
+*Addons* merupakan pod dan service yang mengimplementasikan fitur-fitur yang diperlukan klaster.
+
+Beberapa *addons* akan dijelaskan selanjutnya.
+
+### DNS
+
+Meskipun tidak semua *addons* dibutuhkan, semua klaster Kubernetes hendaknya memiliki DNS klaster. Komponen ini penting karena banyak dibutuhkan oleh komponen lainnya.
+
+[Klaster DNS](https://kubernetes.io/docs/concepts/cluster-administration/addons/) adalah server DNS, selain beberapa server DNS lain yang sudah ada di *environment* kamu, yang berfungsi sebagai catatan DNS bagi Kubernetes *services*
+
+Kontainer yang dimulai oleh kubernetes secara otomatis akan memasukkan server DNS ini ke dalam mekanisme pencarian DNS yang dimilikinya.
+
+### Web UI (Dasbor)
+
+[Dasbor](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) adalah antar muka berbasis web multifungsi yang ada pada klaster Kubernetes. Dasbor ini memungkinkan user melakukan manajemen dan *troubleshooting* klaster maupun aplikasi yang ada pada klaster itu sendiri.
+
+### Container Resource Monitoring
+
+[Container Resource Monitoring](/docs/tasks/debug-application-cluster/resource-usage-monitoring/) mencatat metrik *time-series* yang diperoleh dari kontainer ke dalam basis data serta menyediakan antar muka yang dapat digunakan untuk melakukan pencarian data yang dibutuhkan.
+
+### Cluster-level Logging
+
+[Cluster-level logging](https://kubernetes.io/docs/concepts/cluster-administration/logging/) bertanggung jawab mencatat *log* kontainer pada penyimpanan *log* terpusat dengan antar muka yang dapat digunakan untuk melakukan
+pencarian.
