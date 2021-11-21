@@ -125,7 +125,7 @@ Kontainer yang dimulai oleh kubernetes secara otomatis akan memasukkan server DN
 
 ### Container Resource Monitoring
 
-[Container Resource Monitoring](/docs/tasks/debug-application-cluster/resource-usage-monitoring/) mencatat metrik *time-series* yang diperoleh dari kontainer ke dalam basis data serta menyediakan antar muka yang dapat digunakan untuk melakukan pencarian data yang dibutuhkan.
+[Container Resource Monitoring](https://kubernetes.io/docs/tasks/debug-application-cluster/resource-usage-monitoring/) mencatat metrik *time-series* yang diperoleh dari kontainer ke dalam basis data serta menyediakan antar muka yang dapat digunakan untuk melakukan pencarian data yang dibutuhkan.
 
 ### Cluster-level Logging
 
